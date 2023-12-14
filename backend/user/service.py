@@ -51,3 +51,11 @@ class UserService:
         user: User = self.user_repository.ReadByID(user_id).run()
         del user.password
         return user
+
+    def edit(self, user_id, kakao_deposit_id=None, bank=None, account_number=None):
+        user: User = self.user_repository.ReadByID(user_id).run()
+        if kakao_deposit_id:
+            user.update_kakao_deposit_information(kakao_deposit_id)
+        elif bank and account_number:
+            user.update_toss_deposit_information(bank, account_number)
+        self.user_repository.Update(user).run()

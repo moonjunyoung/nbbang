@@ -1,9 +1,14 @@
 import datetime
+import os
 import re
 import uuid
 
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from dotenv import load_dotenv
+
 from backend.base.exceptions import MeetingUserMismatchException
-from backend.deposit.domain import Deposit
+from backend.user.domain import User
 
 
 class Meeting:
@@ -14,19 +19,33 @@ class Meeting:
         self.user_id = user_id
         self.uuid = uuid
 
-    def set_template(self):
-        self.name = "모임명을 설정해주세요"
-        self.date = datetime.date.isoformat(datetime.date.today())
+    @staticmethod
+    def create_template(user_id):
+        return Meeting(
+            id=None,
+            name="모임명을 설정해주세요",
+            date=datetime.date.isoformat(datetime.date.today()),
+            user_id=user_id,
+            uuid=uuid.uuid4(),
+        )
+
+    def load_user_deposit_information(self, user: User):
+        self.kakao_deposit_information = user
+        self.toss_deposit_information = user
+
+    def update_information(self, name, date):
+        self.name = name
+        self.date = Date(date).date
+
+    def update_kakao_deposit_information(self, kakao_deposit_id):
+        self.kakao_deposit_information = KakaoDepositInformation(kakao_deposit_id)
+
+    def update_toss_deposit_information(self, bank, account_number):
+        self.toss_deposit_information = TossDepositInformation(bank, account_number)
 
     def is_user_of_meeting(self, user_id):
         if not self.user_id == user_id:
             raise MeetingUserMismatchException(user_id, self.id)
-
-    def set_uuid(self):
-        self.uuid = uuid.uuid4()
-
-    def set_deposit(self, deposit: Deposit):
-        self.deposit = deposit
 
     def create_share_link(self):
         self.share_link = f"https://nbbang.shop/share?meeting={self.uuid}"
@@ -40,3 +59,43 @@ class Date:
         ):
             dt = datetime.datetime.strptime(self.date, "%Y-%m-%dT%H:%M:%S.%fZ")
             self.date = dt.strftime("%Y-%m-%d")
+
+
+class KakaoDepositInformation:
+    def __init__(self, kakao_deposit_id) -> None:
+        self.kakao_deposit_id = kakao_deposit_id
+
+
+load_dotenv()
+secret_key = bytes(os.environ.get("ENCRYPT_KEY"), "UTF-8")
+
+
+def aes_encrypt(plaintext):
+    cipher = AES.new(secret_key, AES.MODE_ECB)
+    ciphertext = cipher.encrypt(pad(plaintext.encode("utf-8"), AES.block_size))
+    return ciphertext
+
+
+def aes_decrypt(ciphertext):
+    cipher = AES.new(secret_key, AES.MODE_ECB)
+    decrypted_data = unpad(cipher.decrypt(ciphertext), AES.block_size)
+    return decrypted_data.decode("utf-8")
+
+
+class TossDepositInformation:
+    def __init__(self, bank, account_number) -> None:
+        self.bank = bank
+        self.account_number = account_number
+
+        if isinstance(self.account_number, str) and isinstance(self.bank, str):
+            self._encrypt_account_number_data()
+        elif isinstance(self.account_number, bytes) and isinstance(self.bank, bytes):
+            self._dncrypt_account_number_data()
+
+    def _encrypt_account_number_data(self):
+        self.account_number = aes_encrypt(self.account_number)
+        self.bank = aes_encrypt(self.bank)
+
+    def _dncrypt_account_number_data(self):
+        self.account_number = aes_decrypt(self.account_number)
+        self.bank = aes_decrypt(self.bank)

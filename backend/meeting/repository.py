@@ -1,6 +1,5 @@
 from backend.base.database_connector import MysqlCRUDTemplate
 from backend.base.database_model import MeetingModel
-from backend.deposit.domain import Deposit
 from backend.meeting.domain import Meeting
 
 
@@ -17,7 +16,7 @@ class MeetingRepository:
                 date=self.meeting.date,
                 user_id=self.meeting.user_id,
                 uuid=self.meeting.uuid,
-                account_number=self.meeting.deposit.account_number,
+                account_number=self.meeting.deposit_information.account_number,
                 bank=self.meeting.deposit.bank,
                 kakao_deposit_id=self.meeting.deposit.kakao_deposit_id,
             )
@@ -38,35 +37,11 @@ class MeetingRepository:
             )
             meeting_model.name = self.meeting.name
             meeting_model.date = self.meeting.date
-            self.session.commit()
-
-    class UpdateAccountNumber(MysqlCRUDTemplate):
-        def __init__(self, meeting: Meeting) -> None:
-            self.meeting = meeting
-            super().__init__()
-
-        def execute(self):
-            meeting_model = (
-                self.session.query(MeetingModel)
-                .filter(MeetingModel.id == self.meeting.id)
-                .first()
+            meeting_model.kakao_deposit_id = self.meeting.kakao_deposit_information.id
+            meeting_model.bank = self.meeting.toss_deposit_information.bank
+            meeting_model.account_number = (
+                self.meeting.toss_deposit_information.account_number
             )
-            meeting_model.account_number = self.meeting.deposit.account_number
-            meeting_model.bank = self.meeting.deposit.bank
-            self.session.commit()
-
-    class UpdateKakaoID(MysqlCRUDTemplate):
-        def __init__(self, meeting: Meeting) -> None:
-            self.meeting = meeting
-            super().__init__()
-
-        def execute(self):
-            meeting_model = (
-                self.session.query(MeetingModel)
-                .filter(MeetingModel.id == self.meeting.id)
-                .first()
-            )
-            meeting_model.kakao_deposit_id = self.meeting.deposit.kakao_deposit_id
             self.session.commit()
 
     class Delete(MysqlCRUDTemplate):

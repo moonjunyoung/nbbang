@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Header
 from pydantic import BaseModel
 
@@ -18,10 +20,10 @@ class OauthData(BaseModel):
     token: str
 
 
-class AccountData(BaseModel):
-    bank: str = None
-    account_number: str = None
-    kakao_id: str = None
+class DepositInformationData(BaseModel):
+    bank: Optional[str] = None
+    account_number: Optional[str] = None
+    kakao_deposit_id: Optional[str] = None
 
 
 class UserPresentation:
@@ -96,5 +98,32 @@ class UserPresentation:
             user_id = user_service.oauth_login(name, platform_id, platform)
             return Token.create_token_by_user_id(user_id)
 
+        except Exception as e:
+            catch_exception(e)
+
+    @router.patch("/kakao-deposit-id", status_code=200)
+    async def edit_kakao_deposit_information(
+        deposit_information_data: DepositInformationData, Authorization=Header(None)
+    ):
+        try:
+            user_id = Token.get_user_id_by_token(token=Authorization)
+            user_service.edit(
+                user_id=user_id,
+                kakao_deposit_id=deposit_information_data.kakao_deposit_id,
+            )
+        except Exception as e:
+            catch_exception(e)
+
+    @router.patch("/bank-account", status_code=200)
+    async def edit_toss_deposit_information(
+        deposit_information_data: DepositInformationData, Authorization=Header(None)
+    ):
+        try:
+            user_id = Token.get_user_id_by_token(token=Authorization)
+            user_service.edit(
+                user_id=user_id,
+                bank=deposit_information_data.bank,
+                account_number=deposit_information_data.account_number,
+            )
         except Exception as e:
             catch_exception(e)
